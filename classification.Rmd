@@ -1,0 +1,157 @@
+---
+title: "Machine Learning (Classification) with R"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Using Logistic Regression algorithm to classify diabetec and non-diabetec patients based on some analysis results...
+
+first we import the libraries prepare the data and look at it. 
+
+```{r libraries}
+# load needed libraries
+suppressMessages(library(ggplot2))
+suppressMessages(library(corrplot))
+suppressMessages(library(mlbench))
+suppressMessages(library(caret))
+suppressMessages(library(reshape2))
+suppressMessages(library(dplyr))
+suppressMessages(library(ROCR))
+```
+
+```{r data}
+data("PimaIndiansDiabetes")
+head(PimaIndiansDiabetes)
+str(PimaIndiansDiabetes)
+with(PimaIndiansDiabetes, table(diabetes))
+```
+
+The data has 9 variables, one we want to predict and 8 others.
+the data is cleaned and prepared, so we won't spend too much time in this step, we can move forward to variable selection.
+
+##### which variables of the 8 variables should we select?! 
+there're many methods for variable selection and we're going to look at three of them here;
+first we can look at the variables distribution visually with mapping to the outcome to see which variables indvidually can discern between the outcome results.
+
+```{r density}
+melted <- melt(PimaIndiansDiabetes, id.var = 'diabetes')
+ggplot(melted, aes(x = value, color = diabetes, linetype = diabetes)) +
+  geom_density() + facet_wrap(~ variable, scales = 'free')
+```
+
+Here we can see that **"pregnant"**, **"glucose"**, **"mass"** and somehow **"age"** variables each have a threshold in which we can identify whether the patient has diabetes or not. so these are the values we can use.
+
+another way is to look at the correlation coefficients between the outcome and each values. 
+
+```{r cor}
+cor_mat <- cor(
+  within(PimaIndiansDiabetes, 
+         diabetes <- as.numeric(diabetes))) %>%
+  round(digits = 2)
+corrplot(cor_mat, method = 'number',
+         tl.srt = 45, tl.col = 'black')
+``` 
+
+Almost the same variables show the highest correlations coefficients with the diabetes variable, so this confirms that these are the variables to use.
+
+The third way is to apply the regression model on all the variables and look at its summary to exclude variables with **insignificant p-value**.
+
+```{r glm_all}
+glm_all <- glm(diabetes ~ ., data = PimaIndiansDiabetes,
+    family = binomial(link = 'logit'))
+summary(glm_all)
+## use of varImp function from caret to inspect the important variables
+varImp(glm_all)
+```
+
+this method introduced two more variables **"pressure"** and **"pedigree"** and excluded the *"age"* variable.
+
+These are three methods to select variables to use in the model and they all almost said the same; that **"pregnant"**, **"glucose"** and **"mass"** variables are the most important ones to use and one or two are also important depending on the method we'll stick with.
+Here I will go with the **"p-value"** method ...
+
+So let's get down to business.
+First we'll define the auc function to evaluate the model, then we split the data into training and test then we apply the model.
+
+```{r model}
+auc <- function(model, outcome) { 
+  per <- performance(prediction(model, outcome == 'pos'),
+                     "auc")
+  as.numeric(per@y.values)
+}
+
+set.seed(13)
+PimaIndiansDiabetes$split <- runif(nrow(PimaIndiansDiabetes))
+training <- subset(PimaIndiansDiabetes, split <= 0.9)
+test <- subset(PimaIndiansDiabetes, split > 0.9)
+vars <- c('pregnant', 'glucose', 'pressure', 'mass', 'pedigree')
+
+glm_model <- glm(diabetes ~ ., 
+                 data = training[, c('diabetes', vars)],
+                 family = binomial(link = 'logit')
+                   )
+summary(glm_model)
+```
+
+Here we can see that all the variables have significant p-value so that's cool.
+
+Next we need to see how the model can separate the training data it's already seen. We'll plot a density plot using the probabilities the model gives mapping the color to the outcome to see at which probability value the model can easily separate and differentiate the outcome, i.e **Threshold**.
+```{r density threshold}
+training$model <- predict(glm_model, training[, c('diabetes', vars)],
+                          type = 'response')
+ggplot(training, aes(x = model, color = diabetes, 
+                     linetype = diabetes)) +
+  geom_density() 
+```
+
+It seems that there is a threshold but we cannot spot at what probability exactly, so we will plot different parameters to get the best threshold value.
+we will plot **Specificity**, **Sensitivity**, **Accuracy** and **Error Rate**.
+
+```{r threshold}
+pred_object <- prediction(training$model, training$diabetes)
+perf_object <- performance(pred_object, "sens", "spec")
+sensitivity <- perf_object@y.values[[1]]
+specificity <- perf_object@x.values[[1]]
+acc <- performance(pred_object, "acc")
+accuracy <- acc@y.values[[1]]
+error.rate <- 1 - accuracy
+threshold <- acc@x.values[[1]]
+errors <- data.frame(cbind(threshold, 
+                           cbind(error.rate, 
+                                 cbind(accuracy, 
+                                       cbind(sensitivity, specificity)))))
+
+error.data <- melt(errors, id.vars = "threshold")
+ggplot(error.data, aes(x = threshold, y = value, 
+                       col = variable)) + 
+  geom_line() + scale_x_continuous(breaks = seq(0.0, 1, 0.1))
+```
+
+##### Here we can see that the best probability value to use is **0.32**. 
+let's inspect this measuring both accuracy and auc of the model.
+```{r acc}
+with(training, mean(diabetes == ifelse(
+  model >= 0.32, 'pos', 'neg'
+)))
+auc(training$model, training$diabetes)
+```
+
+The model seems to give nice results, but this is on the training data so we have to check its performance on the test data to be able to generalize the model on data it hasn't seen.
+
+```{r test}
+test$model <- predict(glm_model, test[, c('diabetes', vars)],
+                      type = 'response')
+ggplot(test, aes(x = model, color = diabetes, 
+                     linetype = diabetes)) +
+  geom_density() 
+with(test, mean(diabetes == ifelse(
+  model >= 0.32, 'pos', 'neg'
+)))
+auc(test$model, test$diabetes)
+```
+
+Our model gives even better results on test data. So we can confidently generalize our model.
+
+Hope this helped to have an idea how to do classification tasks using R ...
+
