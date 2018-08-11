@@ -60,8 +60,11 @@ there're many methods for variable selection and we're going to look at three of
 
 ``` r
 melted <- melt(PimaIndiansDiabetes, id.var = 'diabetes')
-ggplot(melted, aes(x = value, color = diabetes, linetype = diabetes)) +
-  geom_density() + facet_wrap(~ variable, scales = 'free')
+ggplot(melted, aes(x = value, fill = diabetes)) +
+  geom_density(color = 'white', alpha = 0.6, size = 0.5) + 
+  facet_wrap(~ variable, scales = 'free') +
+  theme_minimal() + scale_fill_brewer(palette = 'Set1') +
+  theme(legend.position = 'top', legend.direction = 'horizontal')
 ```
 
 ![](classification_files/figure-markdown_github/density-1.png)
@@ -198,9 +201,11 @@ Next we need to see how the model can separate the training data it's already se
 ``` r
 training$model <- predict(glm_model, training[, c('diabetes', vars)],
                           type = 'response')
-ggplot(training, aes(x = model, color = diabetes, 
-                     linetype = diabetes)) +
-  geom_density() 
+ggplot(training, aes(x = model, color = diabetes, linetype = diabetes)) +
+  geom_density() +
+  theme_minimal() +
+  theme(legend.position = 'top', legend.direction = 'horizontal') +
+  scale_color_brewer(palette = 'Set1')
 ```
 
 ![](classification_files/figure-markdown_github/density%20threshold-1.png)
@@ -224,7 +229,10 @@ errors <- data.frame(cbind(threshold,
 error.data <- melt(errors, id.vars = "threshold")
 ggplot(error.data, aes(x = threshold, y = value, 
                        col = variable)) + 
-  geom_line() + scale_x_continuous(breaks = seq(0.0, 1, 0.1))
+  geom_line() + scale_x_continuous(breaks = seq(0.0, 1, 0.1)) +
+  theme_minimal() + 
+  theme(legend.position = 'top', legend.direction = 'horizontal') +
+  scale_color_brewer(palette = 'Set1')
 ```
 
 ![](classification_files/figure-markdown_github/threshold-1.png)
@@ -252,9 +260,11 @@ The model seems to give nice results, but this is on the training data so we hav
 ``` r
 test$model <- predict(glm_model, test[, c('diabetes', vars)],
                       type = 'response')
-ggplot(test, aes(x = model, color = diabetes, 
-                     linetype = diabetes)) +
-  geom_density() 
+ggplot(test, aes(x = model, color = diabetes, linetype = diabetes)) +
+  geom_density() +
+  theme_minimal() +
+  theme(legend.position = 'top', legend.direction = 'horizontal') +
+  scale_color_brewer(palette = 'Set1')
 ```
 
 ![](classification_files/figure-markdown_github/test-1.png)
