@@ -12,8 +12,11 @@ str(PimaIndiansDiabetes)
 with(PimaIndiansDiabetes, table(diabetes))
 
 melted <- melt(PimaIndiansDiabetes, id.var = 'diabetes')
-ggplot(melted, aes(x = value, color = diabetes, linetype = diabetes)) +
-  geom_density() + facet_wrap(~ variable, scales = 'free')
+ggplot(melted, aes(x = value, fill = diabetes)) +
+  geom_density(color = 'white', alpha = 0.6, size = 0.5) + 
+  facet_wrap(~ variable, scales = 'free') +
+  theme_minimal() + scale_fill_brewer(palette = 'Set1') +
+  theme(legend.position = 'top', legend.direction = 'horizontal')
 
 # ImpVars1 <- c('pregnant', 'glucose', 'mass', 'age')
 
@@ -47,11 +50,15 @@ glm_model <- glm(diabetes ~ .,
                  data = training[, c('diabetes', vars)],
                  family = binomial(link = 'logit')
                    )
+summary(glm_model)
+
 training$model <- predict(glm_model, training[, c('diabetes', vars)],
                           type = 'response')
-ggplot(training, aes(x = model, color = diabetes, 
-                     linetype = diabetes)) +
-  geom_density() 
+ggplot(training, aes(x = model, color = diabetes, linetype = diabetes)) +
+  geom_density() +
+  theme_minimal() +
+  theme(legend.position = 'top', legend.direction = 'horizontal') +
+  scale_color_brewer(palette = 'Set1')
 
 pred_object <- prediction(training$model, training$diabetes)
 perf_object <- performance(pred_object, "sens", "spec")
@@ -70,19 +77,28 @@ library(reshape)
 error.data <- melt(errors, id.vars = "threshold")
 ggplot(error.data, aes(x = threshold, y = value, 
                        col = variable)) + 
-  geom_line() + scale_x_continuous(breaks = seq(0.0, 1, 0.1))
+  geom_line() + scale_x_continuous(breaks = seq(0.0, 1, 0.1)) +
+  theme_minimal() + 
+  theme(legend.position = 'top', legend.direction = 'horizontal') +
+  scale_color_brewer(palette = 'Set1')
 
 with(training, mean(diabetes == ifelse(
   model >= 0.32, 'pos', 'neg'
 )))
+
 auc(training$model, training$diabetes)
 
 test$model <- predict(glm_model, test[, c('diabetes', vars)],
                       type = 'response')
-ggplot(test, aes(x = model, color = diabetes, 
-                     linetype = diabetes)) +
-  geom_density() 
+
+ggplot(test, aes(x = model, color = diabetes, linetype = diabetes)) +
+  geom_density() +
+  theme_minimal() +
+  theme(legend.position = 'top', legend.direction = 'horizontal') +
+  scale_color_brewer(palette = 'Set1') 
+
 with(test, mean(diabetes == ifelse(
   model >= 0.32, 'pos', 'neg'
 )))
+
 auc(test$model, test$diabetes)
