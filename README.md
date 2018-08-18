@@ -1,6 +1,5 @@
-Machine Learning (Classification) with R
+[Machine Learning (Classification) with R](https://github.com/MNoorFawi/classification-with-R)
 ================
-https://github.com/MNoorFawi/classification-with-R
 
 ### Using Logistic Regression algorithm to classify diabetic and non-diabetic patients based on some analysis results...
 
