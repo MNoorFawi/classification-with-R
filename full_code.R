@@ -26,6 +26,8 @@ cor_mat <- cor(
   round(digits = 2)
 corrplot(cor_mat, method = 'number',
          tl.srt = 45, tl.col = 'black')
+#corrplot(cor_mat, diag = FALSE, type = "upper", tl.srt = 45, tl.col = "black", method = "shade", shade.col = NA)
+
 # ImpVars2 <- c('pregnant', 'glucose', 'mass', 'age')
 
 glm_all <- glm(diabetes ~ ., data = PimaIndiansDiabetes,
